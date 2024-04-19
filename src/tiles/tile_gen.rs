@@ -1,12 +1,10 @@
-use super::tile_render::SAFE_RADIUS;
 use bevy::prelude::*;
 use rand::Rng;
 use std::collections::HashMap;
 
 // Constants and types related to tile generation
 pub const TILE_SIZE: f32 = 8.0;
-pub const STAGE_SIZE: (i32, i32) = (128, 128); // 256x256 tiles
-pub const CORRUPTION_RATE: f32 = 0.01;
+pub const STAGE_SIZE: (i32, i32) = (64, 64); // 256x256 tiles
 
 #[derive(Component, Clone, PartialEq)]
 pub enum TileType {
@@ -54,16 +52,13 @@ pub fn generate_stage(
 
     for y in 0..STAGE_SIZE.1 {
         for x in 0..STAGE_SIZE.0 {
-            let position = Vec2::new(x as f32, y as f32) * TILE_SIZE;
-            let distance_from_player = position.distance(Vec2::new(5.0, 5.0));
-
-            let tile_entity = match rng.gen_range(0.0..1.0) {
-                a if a <= 0.02
+            let tile_entity: Entity = match rng.gen_range(0.0..1.0) {
+                a if a <= 0.05
                     && total_corrupted < max_corruption
-                    && (x == 0 || y == 0)
-                    && distance_from_player >= SAFE_RADIUS =>
+                    && (x == 0 || y == 0 || x == STAGE_SIZE.0 - 1 || y == STAGE_SIZE.1 - 1) =>
                 {
                     total_corrupted += 1;
+                    info!("Hitting init corrupts: ");
 
                     spawn_tile(
                         &mut commands,
@@ -79,7 +74,7 @@ pub fn generate_stage(
                         &tile_map,
                     )
                 }
-                a if a <= 0.05 => spawn_tile(
+                a if a <= 0.08 => spawn_tile(
                     &mut commands,
                     &asset_server,
                     &mut potentially_corrupted_tiles,
@@ -92,7 +87,7 @@ pub fn generate_stage(
                     },
                     &tile_map,
                 ),
-                a if a <= 0.07 => spawn_tile(
+                a if a <= 0.10 => spawn_tile(
                     &mut commands,
                     &asset_server,
                     &mut potentially_corrupted_tiles,
@@ -105,7 +100,7 @@ pub fn generate_stage(
                     },
                     &tile_map,
                 ),
-                a if a <= 0.08 => spawn_tile(
+                a if a <= 0.12 => spawn_tile(
                     &mut commands,
                     &asset_server,
                     &mut potentially_corrupted_tiles,
@@ -155,19 +150,7 @@ fn spawn_tile(
     };
 
     if tile_type.is_corrupted_tile() {
-        info!("Is corrupt tile");
-        for (dx, dy) in &[(0, 1), (0, -1), (1, 0), (-1, 0)] {
-            if let Some(&neighbor_entity) = tile_map
-                .tiles
-                .get(&(tile.x as i32 + dx, tile.y as i32 + dy))
-            {
-                potentially_corrupted_tiles.tiles.push(neighbor_entity);
-                info!(
-                    "Len potential tiles: {}",
-                    potentially_corrupted_tiles.tiles.len()
-                )
-            }
-        }
+        find_and_push_neighbors(tile_map, &tile, potentially_corrupted_tiles);
     }
 
     let entity = commands
@@ -191,4 +174,19 @@ fn spawn_tile(
         .id();
 
     entity
+}
+
+pub fn find_and_push_neighbors(
+    tile_map: &ResMut<TileMap>,
+    transform: &Tile,
+    potentially_corrupted_tiles: &mut ResMut<PotentiallyCorruptedTiles>,
+) {
+    for (dx, dy) in &[(0, 1), (0, -1), (1, 0), (-1, 0)] {
+        if let Some(&neighbor_entity) = tile_map
+            .tiles
+            .get(&(transform.x as i32 + dx, transform.y as i32 + dy))
+        {
+            potentially_corrupted_tiles.tiles.push(neighbor_entity);
+        }
+    }
 }

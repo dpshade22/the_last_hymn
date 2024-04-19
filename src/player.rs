@@ -2,7 +2,7 @@
 
 use crate::{
     audio::{CurrentBPM, Note, NoteAudioHandles, Song, EIGHTH_NOTE_DURATION},
-    STAGE_SIZE, TILE_SIZE,
+    Tile, TileMap, TileType, STAGE_SIZE, TILE_SIZE,
 };
 use bevy::prelude::*;
 use bevy::utils::Duration;
@@ -173,6 +173,8 @@ pub fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut player_query: Query<&mut Transform, With<Player>>,
     time: Res<Time>,
+    tile_map: Res<TileMap>,
+    tile_query: Query<(&mut TileType)>,
     current_bpm: Res<CurrentBPM>,
 ) {
     if let Ok(mut transform) = player_query.get_single_mut() {
@@ -195,7 +197,28 @@ pub fn player_movement(
             direction = direction.normalize();
         }
 
-        transform.translation += direction * current_bpm.bpm * time.delta_seconds();
+        let mut new_translation =
+            transform.translation + direction * current_bpm.bpm * time.delta_seconds();
+
+        // Clamp the player's position within the stage boundaries
+        new_translation.x = new_translation
+            .x
+            .clamp(0.0, (STAGE_SIZE.0 as f32 - 1.0) * TILE_SIZE);
+        new_translation.y = new_translation
+            .y
+            .clamp(0.0, (STAGE_SIZE.1 as f32 - 1.0) * TILE_SIZE);
+
+        // Check if the new position is on a corrupted tile
+        let new_tile_x = (new_translation.x / TILE_SIZE) as i32;
+        let new_tile_y = (new_translation.y / TILE_SIZE) as i32;
+
+        if let Some(tile_entity) = tile_map.tiles.get(&(new_tile_x, new_tile_y)) {
+            if let Ok(tile_type) = tile_query.get(*tile_entity) {
+                if !tile_type.is_corrupted_tile() {
+                    transform.translation = new_translation;
+                }
+            }
+        }
     }
 }
 

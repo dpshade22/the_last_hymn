@@ -26,7 +26,7 @@ fn main() {
         })
         .insert_resource(PotentiallyCorruptedTiles { tiles: vec![] })
         .insert_resource(CorruptionTimer {
-            timer: Timer::from_seconds(0.5, TimerMode::Repeating),
+            timer: Timer::from_seconds(10.0, TimerMode::Repeating),
         })
         .insert_resource(audio::CurrentBPM::default())
         .add_systems(

@@ -3,7 +3,12 @@ use crate::player::Player;
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use std::collections::HashSet;
+// Import rand for random number generation
+use crate::tiles::{Tile, TileType};
+use rand::Rng;
+use std::collections::HashSet; // Import Tile and TileType
+
+// collectables.rs
 
 #[derive(Component)]
 pub struct CollectableNote;
@@ -12,6 +17,7 @@ pub fn spawn_collectable_notes(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     player: Res<Player>,
+    tile_query: Query<(&Transform, &Tile)>,
 ) {
     let notes_to_collect: Vec<Note> = player
         .current_song
@@ -26,11 +32,15 @@ pub fn spawn_collectable_notes(
         commands.spawn((
             SpriteBundle {
                 texture: asset_server.load("tile_0029.png"),
-                transform: Transform::from_xyz((i as f32) * 50.0, 0.0, 0.0),
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(8.0, 8.0)),
+                    ..default()
+                },
+                transform: Transform::from_xyz((i as f32) * 50.0, 0.0, 1.0),
                 ..default()
             },
             RigidBody::Fixed,
-            Collider::ball(8.0),
+            Collider::ball(4.0),
             CollectableNote,
             *note,
         ));

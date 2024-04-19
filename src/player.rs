@@ -1,14 +1,16 @@
 // player.rs
-// mod audio;
 
-use crate::audio::{CurrentBPM, Note, NoteAudioHandles, Song, EIGHTH_NOTE_DURATION};
+use crate::{
+    audio::{CurrentBPM, Note, NoteAudioHandles, Song, EIGHTH_NOTE_DURATION},
+    TILE_SIZE,
+};
 use bevy::prelude::*;
 use bevy::utils::Duration;
-use bevy_ecs_tilemap::prelude::*;
 use bevy_kira_audio::{Audio, AudioControl, AudioEasing, AudioPlugin, AudioSource, AudioTween};
 use bevy_rapier2d::prelude::*;
 
-const PLAYER_SPEED: f32 = 200.0;
+#[derive(Resource)]
+pub struct CorruptedTileTexture(pub Handle<Image>);
 
 #[derive(Resource, Component, Clone)]
 pub struct Player {
@@ -80,8 +82,14 @@ pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         note_index: 0,
     };
 
+    commands.insert_resource(CorruptedTileTexture(
+        asset_server.load("corrupted_tile_1.png"),
+    ));
+
     // Camera
-    commands.spawn(Camera2dBundle::default());
+    let mut camera = Camera2dBundle::default();
+    camera.projection.scale = 0.25; // Zoom in by a factor of 2
+    commands.spawn(camera);
 
     // Player
     commands.insert_resource(player.clone());
@@ -89,14 +97,14 @@ pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         SpriteBundle {
             texture: asset_server.load("tile_0088.png"),
             sprite: Sprite {
-                custom_size: Some(Vec2::new(36.0, 36.0)),
+                custom_size: Some(Vec2::new(8.0, 8.0)),
                 ..default()
             },
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            transform: Transform::from_xyz(128.0 * TILE_SIZE, 128.0 * TILE_SIZE, 100.0),
             ..default()
         },
         RigidBody::Dynamic,
-        Collider::ball(12.0),
+        Collider::ball(4.0),
         ActiveEvents::COLLISION_EVENTS,
         ActiveCollisionTypes::all(),
         player,
@@ -161,6 +169,7 @@ pub fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut player_query: Query<&mut Transform, With<Player>>,
     time: Res<Time>,
+    current_bpm: Res<CurrentBPM>,
 ) {
     if let Ok(mut transform) = player_query.get_single_mut() {
         let mut direction = Vec3::ZERO;
@@ -182,7 +191,7 @@ pub fn player_movement(
             direction = direction.normalize();
         }
 
-        transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
+        transform.translation += direction * current_bpm.bpm * time.delta_seconds();
     }
 }
 
@@ -215,10 +224,16 @@ fn spawn_temporary_sprite(
     player_transform: &Transform,
     duration: f32,
 ) {
+    let transform = player_transform.clone();
+
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("tile_0088.png"),
-            transform: player_transform.clone(),
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(8.0, 8.0)),
+                ..default()
+            },
+            transform,
             ..default()
         },
         TemporarySprite,

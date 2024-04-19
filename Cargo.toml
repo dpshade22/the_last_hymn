@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.13", default-features = false, features = [
     "png",
+    "bevy_render",
     "multi-threaded",     # Run with multithreading
     "bevy_asset",         # Assets management
     "bevy_gilrs",         # Gamepad input support
@@ -29,3 +30,4 @@ bevy_kira_audio = { version = "0.19", features = ["mp3", "wav"] }
 bevy_rapier2d = "0.25"
 itertools = "0.12.1"
 bevy_ecs_tilemap = "0.12.0"
+rand = "0.8.5"

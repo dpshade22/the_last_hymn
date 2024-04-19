@@ -4531,6 +4531,7 @@ dependencies = [
  "bevy_kira_audio",
  "bevy_rapier2d",
  "itertools",
+ "rand",
 ]
 
 [[package]]

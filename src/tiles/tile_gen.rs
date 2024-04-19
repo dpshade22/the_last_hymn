@@ -1,44 +1,27 @@
-use super::{tile_corruption::CorruptedTile, tile_render::SAFE_RADIUS};
+use super::tile_render::SAFE_RADIUS;
 use bevy::prelude::*;
 use rand::Rng;
 use std::collections::HashMap;
 
 // Constants and types related to tile generation
 pub const TILE_SIZE: f32 = 8.0;
-pub const STAGE_SIZE: (i32, i32) = (256, 256); // 256x256 tiles
+pub const STAGE_SIZE: (i32, i32) = (128, 128); // 256x256 tiles
 pub const CORRUPTION_RATE: f32 = 0.01;
 
 #[derive(Component, Clone, PartialEq)]
 pub enum TileType {
-    Green {
-        potentially_corrupted: bool,
-        png: String,
-    },
-    Grass {
-        potentially_corrupted: bool,
-        png: String,
-    },
-    Flower {
-        potentially_corrupted: bool,
-        png: String,
-    },
-    Sand {
-        potentially_corrupted: bool,
-        png: String,
-    },
-    Corruption {
-        png: String,
-    },
+    Green { png: String },
+    Grass { png: String },
+    Flower { png: String },
+    Sand { png: String },
+    Corruption { png: String },
 }
 
 impl TileType {
-    fn png(&self) -> &str {
+    pub fn is_corrupted_tile(&self) -> bool {
         match self {
-            TileType::Green { png, .. } => png,
-            TileType::Grass { png, .. } => png,
-            TileType::Flower { png, .. } => png,
-            TileType::Sand { png, .. } => png,
-            TileType::Corruption { png } => png,
+            TileType::Corruption { .. } => true,
+            _ => false,
         }
     }
 }
@@ -75,7 +58,7 @@ pub fn generate_stage(
             let distance_from_player = position.distance(Vec2::new(5.0, 5.0));
 
             let tile_entity = match rng.gen_range(0.0..1.0) {
-                a if a <= 0.01
+                a if a <= 0.02
                     && total_corrupted < max_corruption
                     && (x == 0 || y == 0)
                     && distance_from_player >= SAFE_RADIUS =>
@@ -93,6 +76,7 @@ pub fn generate_stage(
                         TileType::Corruption {
                             png: "corrupted_tile_1.png".to_string(),
                         },
+                        &tile_map,
                     )
                 }
                 a if a <= 0.05 => spawn_tile(
@@ -105,8 +89,8 @@ pub fn generate_stage(
                     },
                     TileType::Grass {
                         png: "tile_0001.png".to_string(),
-                        potentially_corrupted: false,
                     },
+                    &tile_map,
                 ),
                 a if a <= 0.07 => spawn_tile(
                     &mut commands,
@@ -118,8 +102,8 @@ pub fn generate_stage(
                     },
                     TileType::Flower {
                         png: "tile_0002.png".to_string(),
-                        potentially_corrupted: false,
                     },
+                    &tile_map,
                 ),
                 a if a <= 0.08 => spawn_tile(
                     &mut commands,
@@ -131,8 +115,8 @@ pub fn generate_stage(
                     },
                     TileType::Sand {
                         png: "tile_0003.png".to_string(),
-                        potentially_corrupted: false,
                     },
+                    &tile_map,
                 ),
                 _ => spawn_tile(
                     &mut commands,
@@ -144,8 +128,8 @@ pub fn generate_stage(
                     },
                     TileType::Green {
                         png: "tile_0000.png".to_string(),
-                        potentially_corrupted: false,
                     },
+                    &tile_map,
                 ),
             };
 
@@ -160,6 +144,7 @@ fn spawn_tile(
     potentially_corrupted_tiles: &mut ResMut<PotentiallyCorruptedTiles>,
     tile: Tile,
     tile_type: TileType,
+    tile_map: &ResMut<TileMap>,
 ) -> Entity {
     let png = match &tile_type {
         TileType::Green { png, .. } => png,
@@ -169,7 +154,21 @@ fn spawn_tile(
         TileType::Corruption { png } => png,
     };
 
-    info!(png);
+    if tile_type.is_corrupted_tile() {
+        info!("Is corrupt tile");
+        for (dx, dy) in &[(0, 1), (0, -1), (1, 0), (-1, 0)] {
+            if let Some(&neighbor_entity) = tile_map
+                .tiles
+                .get(&(tile.x as i32 + dx, tile.y as i32 + dy))
+            {
+                potentially_corrupted_tiles.tiles.push(neighbor_entity);
+                info!(
+                    "Len potential tiles: {}",
+                    potentially_corrupted_tiles.tiles.len()
+                )
+            }
+        }
+    }
 
     let entity = commands
         .spawn((
@@ -190,8 +189,6 @@ fn spawn_tile(
             tile_type,
         ))
         .id();
-
-    potentially_corrupted_tiles.tiles.push(entity);
 
     entity
 }

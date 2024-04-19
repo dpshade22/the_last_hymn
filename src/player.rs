@@ -2,7 +2,7 @@
 
 use crate::{
     audio::{CurrentBPM, Note, NoteAudioHandles, Song, EIGHTH_NOTE_DURATION},
-    TILE_SIZE,
+    STAGE_SIZE, TILE_SIZE,
 };
 use bevy::prelude::*;
 use bevy::utils::Duration;
@@ -100,7 +100,11 @@ pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
                 custom_size: Some(Vec2::new(8.0, 8.0)),
                 ..default()
             },
-            transform: Transform::from_xyz(128.0 * TILE_SIZE, 128.0 * TILE_SIZE, 100.0),
+            transform: Transform::from_xyz(
+                (STAGE_SIZE.0 / 2) as f32 * TILE_SIZE,
+                (STAGE_SIZE.1 / 2) as f32 * TILE_SIZE,
+                100.0,
+            ),
             ..default()
         },
         RigidBody::Dynamic,
